@@ -2,6 +2,14 @@ use std::env;
 use std::process;
 use std::fs;
 
+mod object;
+mod token_types;
+mod scanner;
+mod token;
+
+use crate::token::Token;
+use crate::scanner::Scanner;
+
 fn main() {
     //println!("Welcome to the Zo Programming Language!");
     let args: Vec<String> = env::args().collect();
@@ -38,8 +46,8 @@ fn run_zo_source(path: &str) {
 }
 
 fn run_zo(bytes: &str) -> Result<(), ZoError> {
-    //let scanner: Scanner = Scanner::new(bytes);
-    //let tokens: Vec<Token> = scanner.scan_tokens();
+    let mut scanner: Scanner = Scanner::new(bytes);
+    let tokens: Vec<Token> = scanner.parse();
 
     //for token : tokens.iter() {
     //    println!(token);
@@ -63,7 +71,6 @@ struct ZoError {
 // ---
 // Error Handling
 // ---
-
 fn error(ln: usize, msg: &str) -> ZoError {
     let error = ZoError { line: ln, message: String::from(msg) };
     
