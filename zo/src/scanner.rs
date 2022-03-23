@@ -1,8 +1,27 @@
+use phf::{phf_map, Map};
 
 use crate::token::*;
 use crate::token_types::*;
 use crate::object::*;
 use crate::error;
+
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+    "and" => TokenType::And,
+    "struct" => TokenType::Struct,
+    "else" => TokenType::Else,
+    "false" => TokenType::False,
+    "fn" => TokenType::Fn,
+    "if" => TokenType::If,
+    "null" => TokenType::Null,
+    "or" => TokenType::Or,
+    "print" => TokenType::Print,
+    "return" => TokenType::Return,
+    "self" => TokenType::SelfRef,
+    "super" => TokenType::Super,
+    "true" => TokenType::True,
+    "var" => TokenType::Var,
+    "while" => TokenType::While,
+};
 
 pub struct Scanner {
     source: String,
@@ -23,6 +42,9 @@ impl Scanner {
         }
     }
     
+    // 
+    
+
     // --- Immutables
     fn end(self: &Self) -> bool {
         self.current >= self.source.len()
@@ -37,11 +59,28 @@ impl Scanner {
     }
 
     fn peek_next(self: &Self) -> Option<char> {
-        if self.end() {
+        if self.current + 1 >= self.source.len() {
             return Some('\0');
         }
         
-        self.source.chars().nth(self.current + 1)
+        self
+            .source
+            .chars()
+            .nth(self.current + 1)
+    }
+
+    fn is_numerical(self: &Self, c: char) -> bool {
+        return c >= '0' && c <= '9';    
+    }
+
+    fn is_alphabetical(self: &Self, c: char) -> bool {
+        return (c >= 'a' && c <= 'z') ||
+               (c >= 'A' && c <= 'Z') ||
+               c == '_';
+    }
+
+    fn is_alphanumeric(self: &Self, c: char) -> bool {
+        return self.is_numerical(c) || self.is_alphabetical(c);
     }
 
     // --- Mutables
@@ -65,8 +104,9 @@ impl Scanner {
 
 
     fn next(self: &mut Self) -> Option<char> {
+        let next_char = self.source.chars().nth(self.current);
         self.current += 1;
-        self.source.chars().nth(self.current)
+        next_char
     }
 
 
@@ -143,7 +183,7 @@ impl Scanner {
                     if self.expected('/') { 
                         // Comment
                         while self.peek().unwrap() != '\n' && !self.end() {
-                            self.next();
+                            _ = self.next();
                         }
                     } else {
                         self.push_token(TokenType::Slash);
@@ -152,7 +192,7 @@ impl Scanner {
                 },
 
                 // Ignores whitespaces
-                ' ' => {},
+                ' '  => {},
                 '\r' => {},
                 '\t' => {},
 
@@ -168,8 +208,14 @@ impl Scanner {
 
 
                 _ => {
-                    // TODO(devon): Figure out how you want to handle this at a later point
-                    _ = error(self.line, "Unexpected character");
+                    if self.is_numerical(c) {
+                        self.parse_number();
+                    } else if self.is_alphabetical(c) {
+                        self.parse_identifier();
+                    } else {
+                        // TODO(devon): Figure out how you want to handle this at a later point
+                        _ = error(self.line, "Unexpected character");
+                    }
                 }
             }
         }
@@ -181,7 +227,7 @@ impl Scanner {
                 self.line += 1;
             }
             
-            self.next();
+            _ = self.next();
         }
 
         if self.end() {
@@ -190,15 +236,89 @@ impl Scanner {
         }
 
         // The close "
-        self.next();
+        _ = self.next();
 
         // Trim the surrounding quotes
         let start_index: usize = self.start + 1;
         //let end_index: usize = self.current - 1;
         let count: usize = self.current - start_index;
-
         let string: String = self.source.chars().skip(start_index).take(count).collect();
+
         self.push_token_literal(TokenType::String, Some(Object::Str(string)));
+    }
+
+    fn parse_number(self: &mut Self) {
+        self.iterate_number();
+
+        if let Some(c) = self.peek() {
+            if c == '.' {
+                if let Some(nc) = self.peek_next() {
+                    if self.is_numerical(nc) {
+                        _ = self.next(); // Consume the "."
+
+                        self.iterate_number();
+                    }
+                }
+            }  
+        }
+
+        // let string: String = 
+        //     self
+        //     .source
+        //     .chars()
+        //     .skip(self.start)
+        //     .take(self.current)
+        //     .collect();
+        let string: String = String::from(&self.source[self.start..self.current]);
+
+        // println!("{:?}, {}, {}", string, self.start, self.current);
+        self.push_token_literal(TokenType::Number, 
+            Some(
+                Object::Number (
+                    string
+                    .parse::<f64>()
+                    .unwrap()
+                )
+            )
+        );
+    }
+
+    fn iterate_number(self: &mut Self) {
+        let mut end_of_number: bool = false;
+
+        while !end_of_number {
+            if let Some(c) = self.peek() {
+                if self.is_numerical(c) {
+                    _ = self.next();
+                    continue;
+                }
+            }
+
+            end_of_number = true;
+        }
+    }
+
+    fn parse_identifier(self: &mut Self) {
+        let mut end_of_identifer = false;
+
+        while !end_of_identifer {
+            if let Some(c) = self.peek() {
+                if self.is_alphanumeric(c) {
+                    _ = self.next();
+                    continue;
+                }
+            }
+            end_of_identifer = true;
+        }
+        
+        let mut tok_type = TokenType::Identifier;
+        let text = &self.source[self.start..self.current];
+
+        if let Some(t) = KEYWORDS.get(text) {
+            tok_type = *t;
+        }
+
+        self.push_token(tok_type);
     }
 
     fn push_token(self: &mut Self, token: TokenType) {
@@ -216,3 +336,4 @@ impl Scanner {
     }
 
 }
+

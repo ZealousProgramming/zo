@@ -49,11 +49,11 @@ fn run_zo(bytes: &str) -> Result<(), ZoError> {
     let mut scanner: Scanner = Scanner::new(bytes);
     let tokens: Vec<Token> = scanner.parse();
 
-    //for token : tokens.iter() {
-    //    println!(token);
-    //}
+    for token in tokens.iter() {
+       println!("{:?}", token);
+    }
 
-    println!("{:?}", bytes);
+    // println!("{:?}", bytes);
     
     Ok(())
 }

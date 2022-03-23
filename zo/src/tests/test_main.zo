@@ -1,3 +1,2 @@
-This is a test file bruv
-
-Line 3 Test Line Bruv
+var test_me_silly = 109
+print "LOL"

@@ -1,4 +1,5 @@
 #[derive(Debug, Copy, Clone)]
+#[allow(dead_code)]
 pub enum TokenType {
     // Single-character tokens
     LeftParenthesis,    // (

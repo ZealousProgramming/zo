@@ -1,6 +1,7 @@
 use std::fmt;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum Object {
     Number(f64),
     Str(String),
